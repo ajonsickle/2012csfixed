@@ -32,6 +32,7 @@ namespace _2012cs
         private bool GameOver;
         private Lock CurrentLock;
         private bool LockSolved;
+        private bool mulliganUsed = false;
 
         public Breakthrough()
         {
@@ -60,6 +61,7 @@ namespace _2012cs
                         Console.WriteLine("Current score: " + Score);
                         Console.WriteLine(CurrentLock.GetLockDetails());
                         Console.WriteLine(Sequence.GetCardDisplay());
+                        Console.WriteLine("Cards left: " + Deck.GetNumberOfCards());
                         Console.WriteLine(Hand.GetCardDisplay());
                         MenuChoice = GetChoice();
                         switch (MenuChoice)
@@ -80,6 +82,48 @@ namespace _2012cs
                                     }
                                     else if (DiscardOrPlay == "P")
                                         PlayCardToSequence(CardChoice);
+                                    break;
+                                }
+                            case "P":
+                                {
+                                    if (!CurrentLock.getPeekUsed())
+                                    {
+                                        Console.Write(Deck.GetCardDescriptionAt(0));
+                                        Console.Write(Deck.GetCardDescriptionAt(1));
+                                        Console.Write(Deck.GetCardDescriptionAt(2));
+                                        CurrentLock.setPeekUsed(true);
+                                    }
+                                    break;
+                                }
+                            case "M":
+                                {
+                                    if (!mulliganUsed)
+                                    {
+                                        List<Card> allCards = new List<Card>();
+                                        List<Card> handCards = Hand.getAllCards();
+                                        List<Card> deckCards = Hand.getAllCards();
+                                        List<Card> discardCards = Discard.getAllCards();
+                                        List<Card> sequenceCards = Sequence.getAllCards();
+                                        foreach (Card a in handCards)
+                                        {
+                                            allCards.Add(a);
+                                        }
+                                        foreach (Card b in deckCards)
+                                        {
+                                            allCards.Add(b);
+                                        }
+                                        foreach (Card c in discardCards)
+                                        {
+                                            allCards.Add(c);
+                                        }
+                                        foreach (Card d in discardCards)
+                                        {
+                                            allCards.Add(d);
+                                        }
+                                        Deck.addAllCards(allCards);
+                                        Deck.Shuffle();
+                                        mulliganUsed = true;
+                                    }
                                     break;
                                 }
                         }
@@ -106,6 +150,7 @@ namespace _2012cs
             }
             Deck.Shuffle();
             CurrentLock = GetRandomLock();
+            CurrentLock.setPeekUsed(false);
         }
 
         private bool CheckIfPlayerHasLost()
@@ -155,6 +200,10 @@ namespace _2012cs
                 {
                     Score += MoveCard(Hand, Sequence, Hand.GetCardNumberAt(cardChoice - 1));
                     GetCardFromDeck(cardChoice);
+                } else
+                {
+                    Console.WriteLine("You cannot play two cards of the same type in a row.");
+                    Console.WriteLine("You attempted to play a " + Hand.GetCardDescriptionAt(cardChoice - 1)[0] + ", which is the same as a " + Sequence.GetCardDescriptionAt(Sequence.GetNumberOfCards() - 1)[0]);
                 }
             }
             else
@@ -368,7 +417,11 @@ namespace _2012cs
         private string GetChoice()
         {
             Console.WriteLine();
-            Console.Write("(D)iscard inspect, (U)se card:> ");
+            string options = "(D)iscard inspect, (U)se card";
+            if (!CurrentLock.getPeekUsed()) options += ", (P)eek";
+            if (!mulliganUsed) options += ", (M)ulligan";
+            options += ":>";
+            Console.Write(options);
             string Choice = Console.ReadLine().ToUpper();
             return Choice;
         }
@@ -468,6 +521,15 @@ namespace _2012cs
     class Lock
     {
         protected List<Challenge> Challenges = new List<Challenge>();
+        private bool PeekUsed;
+        public bool getPeekUsed()
+        {
+            return PeekUsed;
+        }
+        public void setPeekUsed(bool val)
+        {
+            PeekUsed = val;
+        } 
 
         public virtual void AddChallenge(List<string> condition)
         {
@@ -695,6 +757,14 @@ namespace _2012cs
         protected List<Card> Cards = new List<Card>();
         protected string Name;
 
+        public List<Card> getAllCards()
+        {
+            return Cards;
+        }
+        public void addAllCards(List<Card> cards)
+        {
+            Cards = cards;
+        }
         public CardCollection(string n)
         {
             Name = n;
