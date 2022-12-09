@@ -1,8 +1,3 @@
-﻿// Skeleton Program code for the AQA A Level Paper 1 Summer 2022 examination
-//this code should be used in conjunction with the Preliminary Material
-//written by the AQA Programmer Team
-//developed in the Visual Studio Community Edition programming environment
-
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -32,7 +27,7 @@ namespace _2012cs
         private bool GameOver;
         private Lock CurrentLock;
         private bool LockSolved;
-        private bool mulliganUsed = false;
+        private bool blastingCapUsed;
 
         public Breakthrough()
         {
@@ -41,6 +36,7 @@ namespace _2012cs
             Sequence = new CardCollection("SEQUENCE");
             Discard = new CardCollection("DISCARD");
             Score = 0;
+            blastingCapUsed = false;
             LoadLocks();
         }
 
@@ -59,9 +55,10 @@ namespace _2012cs
                     {
                         Console.WriteLine();
                         Console.WriteLine("Current score: " + Score);
+                        Console.WriteLine("Number of cards in deck: " + Deck.GetNumberOfCards());
+                        Console.WriteLine("Number of tool cards in deck: " + Deck.GetNumberOfToolCards());
                         Console.WriteLine(CurrentLock.GetLockDetails());
                         Console.WriteLine(Sequence.GetCardDisplay());
-                        Console.WriteLine("Cards left: " + Deck.GetNumberOfCards());
                         Console.WriteLine(Hand.GetCardDisplay());
                         MenuChoice = GetChoice();
                         switch (MenuChoice)
@@ -84,45 +81,19 @@ namespace _2012cs
                                         PlayCardToSequence(CardChoice);
                                     break;
                                 }
-                            case "P":
+                            case "B":
                                 {
-                                    if (!CurrentLock.getPeekUsed())
+                                    if (!blastingCapUsed)
                                     {
-                                        Console.Write(Deck.GetCardDescriptionAt(0));
-                                        Console.Write(Deck.GetCardDescriptionAt(1));
-                                        Console.Write(Deck.GetCardDescriptionAt(2));
-                                        CurrentLock.setPeekUsed(true);
-                                    }
-                                    break;
-                                }
-                            case "M":
-                                {
-                                    if (!mulliganUsed)
-                                    {
-                                        List<Card> allCards = new List<Card>();
-                                        List<Card> handCards = Hand.getAllCards();
-                                        List<Card> deckCards = Hand.getAllCards();
-                                        List<Card> discardCards = Discard.getAllCards();
-                                        List<Card> sequenceCards = Sequence.getAllCards();
-                                        foreach (Card a in handCards)
+                                        blastingCapUsed = true;
+                                        Console.WriteLine("Enter the position of the challenge on the current lock you would like to use the blasting cap on.");
+                                        int pos = Convert.ToInt32(Console.ReadLine());
+                                        if (pos <= CurrentLock.GetNumberOfChallenges() && !CurrentLock.GetChallengeMet(pos - 1))
                                         {
-                                            allCards.Add(a);
+                                            CurrentLock.SetChallengeMet(pos - 1, true);
+                                            Console.WriteLine("The blasting cap was used successfully.");
+                                            Console.WriteLine(CurrentLock.GetLockDetails());
                                         }
-                                        foreach (Card b in deckCards)
-                                        {
-                                            allCards.Add(b);
-                                        }
-                                        foreach (Card c in discardCards)
-                                        {
-                                            allCards.Add(c);
-                                        }
-                                        foreach (Card d in discardCards)
-                                        {
-                                            allCards.Add(d);
-                                        }
-                                        Deck.addAllCards(allCards);
-                                        Deck.Shuffle();
-                                        mulliganUsed = true;
                                     }
                                     break;
                                 }
@@ -150,7 +121,6 @@ namespace _2012cs
             }
             Deck.Shuffle();
             CurrentLock = GetRandomLock();
-            CurrentLock.setPeekUsed(false);
         }
 
         private bool CheckIfPlayerHasLost()
@@ -200,10 +170,6 @@ namespace _2012cs
                 {
                     Score += MoveCard(Hand, Sequence, Hand.GetCardNumberAt(cardChoice - 1));
                     GetCardFromDeck(cardChoice);
-                } else
-                {
-                    Console.WriteLine("You cannot play two cards of the same type in a row.");
-                    Console.WriteLine("You attempted to play a " + Hand.GetCardDescriptionAt(cardChoice - 1)[0] + ", which is the same as a " + Sequence.GetCardDescriptionAt(Sequence.GetNumberOfCards() - 1)[0]);
                 }
             }
             else
@@ -257,7 +223,7 @@ namespace _2012cs
                     }
                     if (Item.Substring(0, 3) == "Dif")
                     {
-                        DifficultyCard CurrentCard = new DifficultyCard(CardNumber);
+                        TrapCard CurrentCard = new TrapCard(CardNumber);
                         cardCol.AddCard(CurrentCard);
                     }
                     else
@@ -361,8 +327,9 @@ namespace _2012cs
         {
             if (Deck.GetNumberOfCards() > 0)
             {
-                if (Deck.GetCardDescriptionAt(0) == "Dif")
+                if (Deck.GetCardDescriptionAt(0) == "Dif" || Deck.GetCardDescriptionAt(0) == "Trp")
                 {
+                    if (Deck.GetCardDescriptionAt(0) == "Trp") Console.WriteLine("Trap!");
                     Card CurrentCard = Deck.RemoveCard(Deck.GetCardNumberAt(0));
                     Console.WriteLine();
                     Console.WriteLine("Difficulty encountered!");
@@ -374,517 +341,577 @@ namespace _2012cs
                     Discard.AddCard(CurrentCard);
                     CurrentCard.Process(Deck, Discard, Hand, Sequence, CurrentLock, Choice, cardChoice);
                 }
-            }
-            while (Hand.GetNumberOfCards() < 5 && Deck.GetNumberOfCards() > 0)
-            {
-                if (Deck.GetCardDescriptionAt(0) == "Dif")
+                
+                while (Hand.GetNumberOfCards() < 5 && Deck.GetNumberOfCards() > 0)
                 {
-                    MoveCard(Deck, Discard, Deck.GetCardNumberAt(0));
-                    Console.WriteLine("A difficulty card was discarded from the deck when refilling the hand.");
+                    if (Deck.GetCardDescriptionAt(0) == "Dif")
+                    {
+                        MoveCard(Deck, Discard, Deck.GetCardNumberAt(0));
+                        Console.WriteLine("A difficulty card was discarded from the deck when refilling the hand.");
+                    }
+                    else
+                    {
+                        MoveCard(Deck, Hand, Deck.GetCardNumberAt(0));
+                    }
+                }
+                if (Deck.GetNumberOfCards() == 0 && Hand.GetNumberOfCards() < 5)
+                {
+                    GameOver = true;
+                }
+            }
+        }
+
+            private int GetCardChoice()
+            {
+                string Choice;
+                int Value;
+                do
+                {
+                    Console.Write("Enter a number between 1 and 5 to specify card to use:> ");
+                    Choice = Console.ReadLine();
+                }
+                while (!int.TryParse(Choice, out Value));
+                return Value;
+            }
+
+            private string GetDiscardOrPlayChoice()
+            {
+                string Choice;
+                int i = 0;
+                do
+                {
+                    Console.Write("(D)iscard or (P)lay?:> ");
+                    Choice = Console.ReadLine().ToUpper();
+                    i++;
+                    if (i >= 1) Console.WriteLine("Error! Please enter a valid value.");
+                } while (Choice != "D" && Choice != "P");
+
+                return Choice;
+            }
+
+            private string GetChoice()
+            {
+                Console.WriteLine();
+                Console.Write("(D)iscard inspect, (U)se card:, (B)lasting cap> ");
+                string Choice = Console.ReadLine().ToUpper();
+                return Choice;
+            }
+
+            private void AddDifficultyCardsToDeck()
+            {
+                for (int Count = 1; Count <= 5; Count++)
+                {
+                    Deck.AddCard(new DifficultyCard());
+                }
+            }
+
+            private void CreateStandardDeck()
+            {
+                Card NewCard;
+                for (int Count = 1; Count <= 5; Count++)
+                {
+                    NewCard = new ToolCard("P", "a");
+                    Deck.AddCard(NewCard);
+                    NewCard = new ToolCard("P", "b");
+                    Deck.AddCard(NewCard);
+                    NewCard = new ToolCard("P", "c");
+                    Deck.AddCard(NewCard);
+                }
+                for (int Count = 1; Count <= 3; Count++)
+                {
+                    NewCard = new ToolCard("F", "a");
+                    Deck.AddCard(NewCard);
+                    NewCard = new ToolCard("F", "b");
+                    Deck.AddCard(NewCard);
+                    NewCard = new ToolCard("F", "c");
+                    Deck.AddCard(NewCard);
+                    NewCard = new ToolCard("K", "a");
+                    Deck.AddCard(NewCard);
+                    NewCard = new ToolCard("K", "b");
+                    Deck.AddCard(NewCard);
+                    NewCard = new ToolCard("K", "c");
+                    Deck.AddCard(NewCard);
+                }
+            }
+
+            private int MoveCard(CardCollection fromCollection, CardCollection toCollection, int cardNumber)
+            {
+                int Score = 0;
+                if (fromCollection.GetName() == "HAND" && toCollection.GetName() == "SEQUENCE")
+                {
+                    Card CardToMove = fromCollection.RemoveCard(cardNumber);
+                    if (CardToMove != null)
+                    {
+                        toCollection.AddCard(CardToMove);
+                        Score = CardToMove.GetScore();
+                    }
                 }
                 else
                 {
-                    MoveCard(Deck, Hand, Deck.GetCardNumberAt(0));
+                    Card CardToMove = fromCollection.RemoveCard(cardNumber);
+                    if (CardToMove != null)
+                    {
+                        toCollection.AddCard(CardToMove);
+                    }
                 }
-            }
-            if (Deck.GetNumberOfCards() == 0 && Hand.GetNumberOfCards() < 5)
-            {
-                GameOver = true;
+                return Score;
             }
         }
 
-        private int GetCardChoice()
+        class Challenge
         {
-            string Choice;
-            int Value;
-            do
+            protected List<string> Condition;
+            protected bool Met;
+
+            public Challenge()
             {
-                Console.Write("Enter a number between 1 and 5 to specify card to use:> ");
-                Choice = Console.ReadLine();
+                Met = false;
             }
-            while (!int.TryParse(Choice, out Value));
-            return Value;
-        }
 
-        private string GetDiscardOrPlayChoice()
-        {
-            string Choice;
-            Console.Write("(D)iscard or (P)lay?:> ");
-            Choice = Console.ReadLine().ToUpper();
-            return Choice;
-        }
-
-        private string GetChoice()
-        {
-            Console.WriteLine();
-            string options = "(D)iscard inspect, (U)se card";
-            if (!CurrentLock.getPeekUsed()) options += ", (P)eek";
-            if (!mulliganUsed) options += ", (M)ulligan";
-            options += ":>";
-            Console.Write(options);
-            string Choice = Console.ReadLine().ToUpper();
-            return Choice;
-        }
-
-        private void AddDifficultyCardsToDeck()
-        {
-            for (int Count = 1; Count <= 5; Count++)
+            public bool GetMet()
             {
-                Deck.AddCard(new DifficultyCard());
+                return Met;
+            }
+
+            public List<string> GetCondition()
+            {
+                return Condition;
+            }
+
+            public void SetMet(bool newValue)
+            {
+                Met = newValue;
+            }
+
+            public void SetCondition(List<string> newCondition)
+            {
+                Condition = newCondition;
             }
         }
 
-        private void CreateStandardDeck()
+        class Lock
         {
-            Card NewCard;
-            for (int Count = 1; Count <= 5; Count++)
-            {
-                NewCard = new ToolCard("P", "a");
-                Deck.AddCard(NewCard);
-                NewCard = new ToolCard("P", "b");
-                Deck.AddCard(NewCard);
-                NewCard = new ToolCard("P", "c");
-                Deck.AddCard(NewCard);
-            }
-            for (int Count = 1; Count <= 3; Count++)
-            {
-                NewCard = new ToolCard("F", "a");
-                Deck.AddCard(NewCard);
-                NewCard = new ToolCard("F", "b");
-                Deck.AddCard(NewCard);
-                NewCard = new ToolCard("F", "c");
-                Deck.AddCard(NewCard);
-                NewCard = new ToolCard("K", "a");
-                Deck.AddCard(NewCard);
-                NewCard = new ToolCard("K", "b");
-                Deck.AddCard(NewCard);
-                NewCard = new ToolCard("K", "c");
-                Deck.AddCard(NewCard);
-            }
-        }
+            protected List<Challenge> Challenges = new List<Challenge>();
 
-        private int MoveCard(CardCollection fromCollection, CardCollection toCollection, int cardNumber)
-        {
-            int Score = 0;
-            if (fromCollection.GetName() == "HAND" && toCollection.GetName() == "SEQUENCE")
+            public virtual void AddChallenge(List<string> condition)
             {
-                Card CardToMove = fromCollection.RemoveCard(cardNumber);
-                if (CardToMove != null)
+                Challenge C = new Challenge();
+                C.SetCondition(condition);
+                Challenges.Add(C);
+            }
+
+            private string ConvertConditionToString(List<string> c)
+            {
+                string ConditionAsString = "";
+                for (int Pos = 0; Pos <= c.Count - 2; Pos++)
                 {
-                    toCollection.AddCard(CardToMove);
-                    Score = CardToMove.GetScore();
+                    ConditionAsString += c[Pos] + ", ";
                 }
+                ConditionAsString += c[c.Count - 1];
+                return ConditionAsString;
             }
-            else
+
+            public virtual string GetLockDetails()
             {
-                Card CardToMove = fromCollection.RemoveCard(cardNumber);
-                if (CardToMove != null)
+                string LockDetails = Environment.NewLine + "CURRENT LOCK" + Environment.NewLine + "------------" + Environment.NewLine;
+                foreach (var C in Challenges)
                 {
-                    toCollection.AddCard(CardToMove);
+                    if (C.GetMet())
+                    {
+                        LockDetails += "Challenge met: ";
+                    }
+                    else
+                    {
+                        LockDetails += "Not met:       ";
+                    }
+                    LockDetails += ConvertConditionToString(C.GetCondition()) + Environment.NewLine;
                 }
+                LockDetails += Environment.NewLine;
+                return LockDetails;
             }
-            return Score;
-        }
-    }
 
-    class Challenge
-    {
-        protected List<string> Condition;
-        protected bool Met;
-
-        public Challenge()
-        {
-            Met = false;
-        }
-
-        public bool GetMet()
-        {
-            return Met;
-        }
-
-        public List<string> GetCondition()
-        {
-            return Condition;
-        }
-
-        public void SetMet(bool newValue)
-        {
-            Met = newValue;
-        }
-
-        public void SetCondition(List<string> newCondition)
-        {
-            Condition = newCondition;
-        }
-    }
-
-    class Lock
-    {
-        protected List<Challenge> Challenges = new List<Challenge>();
-        private bool PeekUsed;
-        public bool getPeekUsed()
-        {
-            return PeekUsed;
-        }
-        public void setPeekUsed(bool val)
-        {
-            PeekUsed = val;
-        } 
-
-        public virtual void AddChallenge(List<string> condition)
-        {
-            Challenge C = new Challenge();
-            C.SetCondition(condition);
-            Challenges.Add(C);
-        }
-
-        private string ConvertConditionToString(List<string> c)
-        {
-            string ConditionAsString = "";
-            for (int Pos = 0; Pos <= c.Count - 2; Pos++)
+            public virtual bool GetLockSolved()
             {
-                ConditionAsString += c[Pos] + ", ";
-            }
-            ConditionAsString += c[c.Count - 1];
-            return ConditionAsString;
-        }
-
-        public virtual string GetLockDetails()
-        {
-            string LockDetails = Environment.NewLine + "CURRENT LOCK" + Environment.NewLine + "------------" + Environment.NewLine;
-            foreach (var C in Challenges)
-            {
-                if (C.GetMet())
+                foreach (var C in Challenges)
                 {
-                    LockDetails += "Challenge met: ";
+                    if (!C.GetMet())
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            public virtual bool CheckIfConditionMet(string sequence)
+            {
+                foreach (var C in Challenges)
+                {
+                    if (!C.GetMet() && sequence == ConvertConditionToString(C.GetCondition()))
+                    {
+                        C.SetMet(true);
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            public virtual void SetChallengeMet(int pos, bool value)
+            {
+                Challenges[pos].SetMet(value);
+            }
+
+            public virtual bool GetChallengeMet(int pos)
+            {
+                return Challenges[pos].GetMet();
+            }
+
+            public virtual int GetNumberOfChallenges()
+            {
+                return Challenges.Count;
+            }
+        }
+
+        class Card
+        {
+            protected int CardNumber, Score;
+            protected static int NextCardNumber = 1;
+
+            public Card()
+            {
+                CardNumber = NextCardNumber;
+                NextCardNumber += 1;
+                Score = 0;
+            }
+
+            public virtual int GetScore()
+            {
+                return Score;
+            }
+
+            public virtual void Process(CardCollection deck, CardCollection discard,
+                CardCollection hand, CardCollection sequence, Lock currentLock,
+                string choice, int cardChoice)
+            {
+            }
+
+            public virtual int GetCardNumber()
+            {
+                return CardNumber;
+            }
+
+            public virtual string GetDescription()
+            {
+                if (CardNumber < 10)
+                {
+                    return " " + CardNumber.ToString();
                 }
                 else
                 {
-                    LockDetails += "Not met:       ";
+                    return CardNumber.ToString();
                 }
-                LockDetails += ConvertConditionToString(C.GetCondition()) + Environment.NewLine;
             }
-            LockDetails += Environment.NewLine;
-            return LockDetails;
         }
 
-        public virtual bool GetLockSolved()
+        class ToolCard : Card
         {
-            foreach (var C in Challenges)
+            protected string ToolType;
+            protected string Kit;
+
+            public ToolCard(string t, string k) : base()
             {
-                if (!C.GetMet())
+                ToolType = t;
+                Kit = k;
+                SetScore();
+            }
+
+            public ToolCard(string t, string k, int cardNo)
+            {
+                ToolType = t;
+                Kit = k;
+                CardNumber = cardNo;
+                SetScore();
+            }
+
+            private void SetScore()
+            {
+                switch (ToolType)
                 {
-                    return false;
+                    case "K":
+                        {
+                            Score = 3;
+                            break;
+                        }
+                    case "F":
+                        {
+                            Score = 2;
+                            break;
+                        }
+                    case "P":
+                        {
+                            Score = 1;
+                            break;
+                        }
                 }
             }
-            return true;
+
+            public override string GetDescription()
+            {
+                return ToolType + " " + Kit;
+            }
         }
 
-        public virtual bool CheckIfConditionMet(string sequence)
+        class DifficultyCard : Card
         {
-            foreach (var C in Challenges)
+            protected string CardType;
+
+            public DifficultyCard()
+                : base()
             {
-                if (!C.GetMet() && sequence == ConvertConditionToString(C.GetCondition()))
+                CardType = "Dif";
+            }
+
+            public DifficultyCard(int cardNo)
+            {
+                CardType = "Dif";
+                CardNumber = cardNo;
+            }
+
+            public override string GetDescription()
+            {
+                return CardType;
+            }
+
+            public override void Process(CardCollection deck, CardCollection discard, CardCollection hand, CardCollection sequence, Lock currentLock, string choice, int cardChoice)
+            {
+                int ChoiceAsInteger;
+                if (int.TryParse(choice, out ChoiceAsInteger))
                 {
-                    C.SetMet(true);
-                    return true;
+                    if (ChoiceAsInteger >= 1 && ChoiceAsInteger <= 5)
+                    {
+                        if (ChoiceAsInteger >= cardChoice)
+                        {
+                            ChoiceAsInteger -= 1;
+                        }
+                        if (ChoiceAsInteger > 0)
+                        {
+                            ChoiceAsInteger -= 1;
+                        }
+                        if (hand.GetCardDescriptionAt(ChoiceAsInteger)[0] == 'K')
+                        {
+                            Card CardToMove = hand.RemoveCard(hand.GetCardNumberAt(ChoiceAsInteger));
+                            discard.AddCard(CardToMove);
+                            return;
+                        }
+                    }
+                }
+                int Count = 0;
+                while (Count < 5 && deck.GetNumberOfCards() > 0)
+                {
+                    Card CardToMove = deck.RemoveCard(deck.GetCardNumberAt(0));
+                    discard.AddCard(CardToMove);
+                    Count += 1;
                 }
             }
-            return false;
         }
 
-        public virtual void SetChallengeMet(int pos, bool value)
+        class TrapCard : DifficultyCard
         {
-            Challenges[pos].SetMet(value);
-        }
-
-        public virtual bool GetChallengeMet(int pos)
-        {
-            return Challenges[pos].GetMet();
-        }
-
-        public virtual int GetNumberOfChallenges()
-        {
-            return Challenges.Count;
-        }
-    }
-
-    class Card
-    {
-        protected int CardNumber, Score;
-        protected static int NextCardNumber = 1;
-
-        public Card()
-        {
-            CardNumber = NextCardNumber;
-            NextCardNumber += 1;
-            Score = 0;
-        }
-
-        public virtual int GetScore()
-        {
-            return Score;
-        }
-
-        public virtual void Process(CardCollection deck, CardCollection discard,
-            CardCollection hand, CardCollection sequence, Lock currentLock,
-            string choice, int cardChoice)
-        {
-        }
-
-        public virtual int GetCardNumber()
-        {
-            return CardNumber;
-        }
-
-        public virtual string GetDescription()
-        {
-            if (CardNumber < 10)
+            public TrapCard(int CardNumber)
             {
-                return " " + CardNumber.ToString();
+                this.CardNumber = CardNumber;
+                this.CardType = "Trp";
+            }
+            public override void Process(CardCollection deck, CardCollection discard, CardCollection hand, CardCollection sequence, Lock currentLock, string choice, int cardChoice)
+            {
+            int numOfChallengesMet = 0;
+            for (int i = 0; i < currentLock.GetNumberOfChallenges(); i++)
+            {
+                if (currentLock.GetChallengeMet(i)) numOfChallengesMet++;
+            }
+            if (numOfChallengesMet == 0)
+            {
+                int ChoiceAsInteger;
+                if (int.TryParse(choice, out ChoiceAsInteger))
+                {
+                    if (ChoiceAsInteger >= 1 && ChoiceAsInteger <= 5)
+                    {
+                        if (ChoiceAsInteger >= cardChoice)
+                        {
+                            ChoiceAsInteger -= 1;
+                        }
+                        if (ChoiceAsInteger > 0)
+                        {
+                            ChoiceAsInteger -= 1;
+                        }
+                        if (hand.GetCardDescriptionAt(ChoiceAsInteger)[0] == 'K')
+                        {
+                            Card CardToMove = hand.RemoveCard(hand.GetCardNumberAt(ChoiceAsInteger));
+                            discard.AddCard(CardToMove);
+                            return;
+                        }
+                    }
+                }
+                int Count = 0;
+                while (Count < 5 && deck.GetNumberOfCards() > 0)
+                {
+                    Card CardToMove = deck.RemoveCard(deck.GetCardNumberAt(0));
+                    discard.AddCard(CardToMove);
+                    Count += 1;
+                }
             }
             else
             {
-                return CardNumber.ToString();
-            }
-        }
-    }
-
-    class ToolCard : Card
-    {
-        protected string ToolType;
-        protected string Kit;
-
-        public ToolCard(string t, string k) : base()
-        {
-            ToolType = t;
-            Kit = k;
-            SetScore();
-        }
-
-        public ToolCard(string t, string k, int cardNo)
-        {
-            ToolType = t;
-            Kit = k;
-            CardNumber = cardNo;
-            SetScore();
-        }
-
-        private void SetScore()
-        {
-            switch (ToolType)
-            {
-                case "K":
-                    {
-                        Score = 3;
-                        break;
-                    }
-                case "F":
-                    {
-                        Score = 2;
-                        break;
-                    }
-                case "P":
-                    {
-                        Score = 1;
-                        break;
-                    }
-            }
-        }
-
-        public override string GetDescription()
-        {
-            return ToolType + " " + Kit;
-        }
-    }
-
-    class DifficultyCard : Card
-    {
-        protected string CardType;
-
-        public DifficultyCard()
-            : base()
-        {
-            CardType = "Dif";
-        }
-
-        public DifficultyCard(int cardNo)
-        {
-            CardType = "Dif";
-            CardNumber = cardNo;
-        }
-
-        public override string GetDescription()
-        {
-            return CardType;
-        }
-
-        public override void Process(CardCollection deck, CardCollection discard, CardCollection hand, CardCollection sequence, Lock currentLock, string choice, int cardChoice)
-        {
-            int ChoiceAsInteger;
-            if (int.TryParse(choice, out ChoiceAsInteger))
-            {
-                if (ChoiceAsInteger >= 1 && ChoiceAsInteger <= 5)
+                Random rand = new Random();
+                int x = rand.Next(0, numOfChallengesMet);
+                int tempNum = 0;
+                for (int i = 0; i < currentLock.GetNumberOfChallenges(); i++)
                 {
-                    if (ChoiceAsInteger >= cardChoice)
-                    {
-                        ChoiceAsInteger -= 1;
-                    }
-                    if (ChoiceAsInteger > 0)
-                    {
-                        ChoiceAsInteger -= 1;
-                    }
-                    if (hand.GetCardDescriptionAt(ChoiceAsInteger)[0] == 'K')
-                    {
-                        Card CardToMove = hand.RemoveCard(hand.GetCardNumberAt(ChoiceAsInteger));
-                        discard.AddCard(CardToMove);
-                        return;
-                    }
+                    if (currentLock.GetChallengeMet(i)) tempNum++;
+                    if (tempNum == x) currentLock.SetChallengeMet(x, false);
                 }
             }
-            int Count = 0;
-            while (Count < 5 && deck.GetNumberOfCards() > 0)
-            {
-                Card CardToMove = deck.RemoveCard(deck.GetCardNumberAt(0));
-                discard.AddCard(CardToMove);
-                Count += 1;
-            }
-        }
-    }
-
-    class CardCollection
-    {
-        protected List<Card> Cards = new List<Card>();
-        protected string Name;
-
-        public List<Card> getAllCards()
-        {
-            return Cards;
-        }
-        public void addAllCards(List<Card> cards)
-        {
-            Cards = cards;
-        }
-        public CardCollection(string n)
-        {
-            Name = n;
-        }
-
-        public string GetName()
-        {
-            return Name;
-        }
-
-        public int GetCardNumberAt(int x)
-        {
-            return Cards[x].GetCardNumber();
-        }
-
-        public string GetCardDescriptionAt(int x)
-        {
-            return Cards[x].GetDescription();
-        }
-
-        public void AddCard(Card c)
-        {
-            Cards.Add(c);
-        }
-
-        public int GetNumberOfCards()
-        {
-            return Cards.Count;
-        }
-
-        public void Shuffle()
-        {
-            Random RNoGen = new Random();
-            Card TempCard;
-            int RNo1, RNo2;
-            for (int Count = 1; Count <= 10000; Count++)
-            {
-                RNo1 = RNoGen.Next(0, Cards.Count);
-                RNo2 = RNoGen.Next(0, Cards.Count);
-                TempCard = Cards[RNo1];
-                Cards[RNo1] = Cards[RNo2];
-                Cards[RNo2] = TempCard;
+            
             }
         }
 
-        public Card RemoveCard(int cardNumber)
+        class CardCollection
         {
-            bool CardFound = false;
-            int Pos = 0;
-            Card CardToGet = null;
-            while (Pos < Cards.Count && !CardFound)
+            protected List<Card> Cards = new List<Card>();
+            protected string Name;
+
+            public int GetNumberOfToolCards()
             {
-                if (Cards[Pos].GetCardNumber() == cardNumber)
+                int num = 0;
+                foreach (Card c in Cards)
                 {
-                    CardToGet = Cards[Pos];
-                    CardFound = true;
-                    Cards.RemoveAt(Pos);
+                    if (c.GetDescription().StartsWith("P") || c.GetDescription().StartsWith("F") || c.GetDescription().StartsWith("K"))
+                    {
+                        num++;
+                    }
                 }
-                Pos++;
+                return num;
             }
-            return CardToGet;
-        }
 
-        private string CreateLineOfDashes(int size)
-        {
-            string LineOfDashes = "";
-            for (int Count = 1; Count <= size; Count++)
+            public CardCollection(string n)
             {
-                LineOfDashes += "------";
+                Name = n;
             }
-            return LineOfDashes;
-        }
 
-        public string GetCardDisplay()
-        {
-            string CardDisplay = Environment.NewLine + Name + ":";
-            if (Cards.Count == 0)
+            public string GetName()
             {
-                return CardDisplay + " empty" + Environment.NewLine + Environment.NewLine;
+                return Name;
             }
-            else
+
+            public int GetCardNumberAt(int x)
             {
-                CardDisplay += Environment.NewLine + Environment.NewLine;
+                return Cards[x].GetCardNumber();
             }
-            string LineOfDashes;
-            const int CardsPerLine = 10;
-            if (Cards.Count > CardsPerLine)
+
+            public string GetCardDescriptionAt(int x)
             {
-                LineOfDashes = CreateLineOfDashes(CardsPerLine);
+                return Cards[x].GetDescription();
             }
-            else
+
+            public void AddCard(Card c)
             {
-                LineOfDashes = CreateLineOfDashes(Cards.Count);
+                Cards.Add(c);
             }
-            CardDisplay += LineOfDashes + Environment.NewLine;
-            bool Complete = false;
-            int Pos = 0;
-            while (!Complete)
+
+            public int GetNumberOfCards()
             {
-                CardDisplay += "| " + Cards[Pos].GetDescription() + " ";
-                Pos++;
-                if (Pos % CardsPerLine == 0)
+                return Cards.Count;
+            }
+
+            public void Shuffle()
+            {
+                Random RNoGen = new Random();
+                Card TempCard;
+                int RNo1, RNo2;
+                for (int Count = 1; Count <= 10000; Count++)
                 {
-                    CardDisplay += "|" + Environment.NewLine + LineOfDashes + Environment.NewLine;
-                }
-                if (Pos == Cards.Count)
-                {
-                    Complete = true;
+                    RNo1 = RNoGen.Next(0, Cards.Count);
+                    RNo2 = RNoGen.Next(0, Cards.Count);
+                    TempCard = Cards[RNo1];
+                    Cards[RNo1] = Cards[RNo2];
+                    Cards[RNo2] = TempCard;
                 }
             }
-            if (Cards.Count % CardsPerLine > 0)
+
+            public Card RemoveCard(int cardNumber)
             {
-                CardDisplay += "|" + Environment.NewLine;
+                bool CardFound = false;
+                int Pos = 0;
+                Card CardToGet = null;
+                while (Pos < Cards.Count && !CardFound)
+                {
+                    if (Cards[Pos].GetCardNumber() == cardNumber)
+                    {
+                        CardToGet = Cards[Pos];
+                        CardFound = true;
+                        Cards.RemoveAt(Pos);
+                    }
+                    Pos++;
+                }
+                return CardToGet;
+            }
+
+            private string CreateLineOfDashes(int size)
+            {
+                string LineOfDashes = "";
+                for (int Count = 1; Count <= size; Count++)
+                {
+                    LineOfDashes += "------";
+                }
+                return LineOfDashes;
+            }
+
+            public string GetCardDisplay()
+            {
+                string CardDisplay = Environment.NewLine + Name + ":";
+                if (Cards.Count == 0)
+                {
+                    return CardDisplay + " empty" + Environment.NewLine + Environment.NewLine;
+                }
+                else
+                {
+                    CardDisplay += Environment.NewLine + Environment.NewLine;
+                }
+                string LineOfDashes;
+                const int CardsPerLine = 10;
                 if (Cards.Count > CardsPerLine)
                 {
-                    LineOfDashes = CreateLineOfDashes(Cards.Count % CardsPerLine);
+                    LineOfDashes = CreateLineOfDashes(CardsPerLine);
+                }
+                else
+                {
+                    LineOfDashes = CreateLineOfDashes(Cards.Count);
                 }
                 CardDisplay += LineOfDashes + Environment.NewLine;
+                bool Complete = false;
+                int Pos = 0;
+                while (!Complete)
+                {
+                    CardDisplay += "| " + Cards[Pos].GetDescription() + " ";
+                    Pos++;
+                    if (Pos % CardsPerLine == 0)
+                    {
+                        CardDisplay += "|" + Environment.NewLine + LineOfDashes + Environment.NewLine;
+                    }
+                    if (Pos == Cards.Count)
+                    {
+                        Complete = true;
+                    }
+                }
+                if (Cards.Count % CardsPerLine > 0)
+                {
+                    CardDisplay += "|" + Environment.NewLine;
+                    if (Cards.Count > CardsPerLine)
+                    {
+                        LineOfDashes = CreateLineOfDashes(Cards.Count % CardsPerLine);
+                    }
+                    CardDisplay += LineOfDashes + Environment.NewLine;
+                }
+                return CardDisplay;
             }
-            return CardDisplay;
         }
     }
-}
